@@ -22,7 +22,7 @@ Ultrasonic SlaveUltrasonic(1,3);  // Makes the Slave-side Ultrasonic Object with
 float Masterdistance, Slavedistance;
 
 enum Bridgestate {IDLE, MOVING};  // Makes an Enumeration containing IDLE and MOVING to be used in the state machine.
-     Bridgestate = IDLE; // Starts the code with Bridgestate initially set to IDLE
+     Bridgestate Bridgestate = IDLE; // Starts the code with Bridgestate initially set to IDLE
 bool Bridgedown = true;
 
 unsigned long currentmillis = millis(); // Starts the clock for current millis, can use it to update various differnt 'previousmillis' variables
