@@ -27,7 +27,7 @@ bool Bridgedown = true;
 
 unsigned long currentmillis = millis(); // Starts the clock for current millis, can use it to update various differnt 'previousmillis' variables
 unsigned long previousmillis = 0;
-const long strobeint = 500;        // Change the interval if you want to change how fast the strobes blink
+const long strobeint = 1000;        // Change the interval if you want to change how fast the strobes blink
 bool LEDSTATE = false;            // Set LEDSTATE to false initially
 
 const long bridgeint = 10000;     // How long the bridge will stay down for before going back up
@@ -65,7 +65,8 @@ void loop() // This is our main loop
   Masterdistance = masterdistanceread(); // Update variable with current distance read from sensor
   Slavedistance = slavedistanceread();   // ||
 
-  if (currentmillis - previousmillis >= strobeint) // Not sure <= or >= check later, change for the blinking traffic lights too
+  unsigned long currentmillis = millis();
+   if(currentmillis - previousmillis >= strobeint) 
   {
     previousmillis = currentmillis;
     LEDSTATE = !LEDSTATE;
@@ -79,7 +80,7 @@ void loop() // This is our main loop
       digitalWrite(GreenTrafficPin, LOW);  // Turns off Green Traffic Lights
       Serial.print("Bridge State: ");      // Outputs Bridge State to Serial Monitor for Debugging purposes
       Serial.println(Bridgestate);
-      if (Masterdistance <= 2)
+      if (Masterdistance >= 2) // USED MORE THAN TO TEST STATE #0
       {
         Bridgestate = MOVING;
       }
@@ -87,9 +88,9 @@ void loop() // This is our main loop
     case MOVING:
       Serial.print("Bridge State: "); // Tells us the state of the bridge on the serial monitor (Debugging purposes)
       Serial.println(Bridgestate);    // Prints the current case of 'Bridgestate'
-      flashinglights(); // Flashes the RED and GREEN LEDS from variables 'GreenTrafficPin' and 'RedTrafficPin' Only when moving Green and Red pins
-      movebridge();     // Moves the down for the cars to pass, waits (milliseconds, or delay), then moves it back up // open Barrier nested in move bridge?
-      Bridgestate = IDLE;
+      //flashinglights(); // Flashes the RED and GREEN LEDS from variables 'GreenTrafficPin' and 'RedTrafficPin' Only when moving Green and Red pins
+      //movebridge();     // Moves the down for the cars to pass, waits (milliseconds, or delay), then moves it back up // open Barrier nested in move bridge?
+      //Bridgestate = IDLE;
       break;
   }
 }
