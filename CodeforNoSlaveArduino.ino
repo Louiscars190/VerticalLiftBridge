@@ -33,6 +33,8 @@ bool LEDSTATE = false;            // Set LEDSTATE to false initially
 const long bridgeint = 10000;     // How long the bridge will stay down for before going back up
 unsigned long bridgeprevmill = 0; // Initilizating previous millisecond variables for bridge so that it stays down for 10 seconds
 
+const long serialupdateint = 950;
+
 const long trafficint = 500;        // Initializing constant interval for green traffic light
 unsigned long trafficprevmill = 0;  // Initializing previous millisecond variables for green traffic interval
 
@@ -78,18 +80,28 @@ void loop() // This is our main loop
     case IDLE: // Trafffic Light is Red, Listening for Car. If car there, change state to moving.
       digitalWrite(RedTrafficPin, HIGH);   // Turns on Red Traffic Lights
       digitalWrite(GreenTrafficPin, LOW);  // Turns off Green Traffic Lights
-      Serial.print("Bridge State: ");      // Outputs Bridge State to Serial Monitor for Debugging purposes
-      Serial.println(Bridgestate);
-      if (Masterdistance >= 2) // USED MORE THAN TO TEST STATE #0
+      if (currentmillis - previousmillis >= serialupdateint)
+      {
+        Serial.print("Bridge State: ");      // Outputs Bridge State to Serial Monitor for Debugging purposes
+        Serial.println(Bridgestate);
+      }
+      if (Masterdistance >= 3 || Slavedistance >= 3) // USED MORE THAN TO TEST STATE #0
       {
         Bridgestate = MOVING;
       }
       break;
     case MOVING:
-      Serial.print("Bridge State: "); // Tells us the state of the bridge on the serial monitor (Debugging purposes)
-      Serial.println(Bridgestate);    // Prints the current case of 'Bridgestate'
+      if (currentmillis - previousmillis >= serialupdateint)
+      {
+        Serial.print("Bridge State: "); // Tells us the state of the bridge on the serial monitor (Debugging purposes)
+        Serial.println("Moving");    // Prints the current case of 'Bridgestate'
+      }
       //flashinglights(); // Flashes the RED and GREEN LEDS from variables 'GreenTrafficPin' and 'RedTrafficPin' Only when moving Green and Red pins
       //movebridge();     // Moves the down for the cars to pass, waits (milliseconds, or delay), then moves it back up // open Barrier nested in move bridge?
+      //if (Masterdistance <= 3 || Slavedistance <= 3) // USED MORE THAN TO TEST STATE #0
+      //{
+      //  Bridgestate = IDLE;
+      //}
       //Bridgestate = IDLE;
       break;
   }
@@ -99,17 +111,17 @@ void loop() // This is our main loop
 float masterdistanceread() // Outputs the distance of a master rangefinder as a function 
 {
   Masterdistance = MasterUltrasonic.read();
-  Serial.print("Distance of Master: "); // Outputs Distance in centimeters to the Serial Monitor
-  Serial.println(Masterdistance);
+  //Serial.print("Distance of Master: "); // Outputs Distance in centimeters to the Serial Monitor
+  //Serial.println(Masterdistance);
   return(Masterdistance);
 }
 
 //DONE
-float slavedistanceread() // Outputs the distance of slave rangefinder as a function
+float slavedistanceread() // Outputs the distance of slave rangefinder as a function 
 {
   Slavedistance = SlaveUltrasonic.read();
-  Serial.print("Distance of Slave: ");
-  Serial.println(Slavedistance);
+  //Serial.print("Distance of Slave: ");
+  //Serial.println(Slavedistance);
   return(Slavedistance);
 }
 
@@ -149,8 +161,6 @@ void flashinglights() // Skeptical about this part of the code //DONE
   }
   return; // Flashes lights while the bridge is moving
 }
-
-
 
 
 //NOT DONE
