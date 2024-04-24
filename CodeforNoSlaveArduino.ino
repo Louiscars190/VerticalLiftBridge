@@ -1,29 +1,20 @@
-#include <Stepper.h>
-#include <Servo.h>
-#include <Ultrasonic.h> // Make sure to install ultrasonic library if you haven't already in your Arduino IDE
-
-const int stepsPerRev = 2038; // Steps per Rotation
-
-Stepper MasterStepper = Stepper(stepsPerRev, 9,10,11,12); // Stepper is the constructor of the Stepper class. myStepper is the object we initialize. ULN2003: IN1, IN2, IN3, IN4 digital pin 9,10,11,12
-Stepper SlaveStepper  = Stepper(stepsPerRev, A0,A1,A2,A3);// Stepper libray sets pins as digital outputs so we do not need to do it in void setup()
-Servo Masterservo; // Creating master-side servo object 
-Servo Slaveservo;  // Creating slave-side servo object
-
-int MasterservoPin = 4; // Makes a Variable for pin 4, for use as a servo
-int SlaveservoPin = 8;  // Makes a Variable for Pin 8, for use as a servo
+#include <HC_SR04.h>
+#include <CheapStepper.h>
+#include <BlockNot.h>
 
 int StrobePin = 7;       // Makes a Variable for pin 7, for use as a strobe
 int GreenTrafficPin = 6; // Outputs to 2 Green LEDS
 int RedTrafficPin = 5;   // Outputs to 2 Red LEDS
 
-Ultrasonic MasterUltrasonic(0,2); // Makes the Master-side Ultrasonic Object with Trigger pin 0 and Echo Pin 2
-Ultrasonic SlaveUltrasonic(1,3);  // Makes the Slave-side Ultrasonic Object with Trigger pin 1 and Echo Pin 3
-
-float Masterdistance, Slavedistance;
+long Masterdistance, Slavedistance;
 
 enum Bridgestate {IDLE, MOVING};  // Makes an Enumeration containing IDLE and MOVING to be used in the state machine.
-     Bridgestate Bridgestate = IDLE; // Starts the code with Bridgestate initially set to IDLE
+     Bridgestate = IDLE; // Starts the code with Bridgestate initially set to IDLE
 bool Bridgedown = true;
+
+
+
+
 
 unsigned long currentmillis = millis(); // Starts the clock for current millis, can use it to update various differnt 'previousmillis' variables
 unsigned long previousmillis = 0;
@@ -35,7 +26,7 @@ unsigned long bridgeprevmill = 0; // Initilizating previous millisecond variable
 
 const long serialupdateint = 950;
 
-const long trafficint = 500;        // Initializing constant interval for green traffic light
+const long trafficint = 500;        // Initializing constant interval for traffic light
 unsigned long trafficprevmill = 0;  // Initializing previous millisecond variables for green traffic interval
 
 //DONE
@@ -48,12 +39,6 @@ void setup()
   
   SlaveStepper.setSpeed(10);
   SlaveStepper.step(1019); // If needed, put a negative will make it go the other way.
-  
-  Masterservo.attach(MasterservoPin); // Attach Masterservo to pin 'MasterservoPin'
-  Slaveservo.attach(SlaveservoPin);   // Atach Slaveservo to pin 'SlaveservoPin'
-  
-  Masterservo.write(90); // Could be 180, depending on how we attach the servo, change later
-  Slaveservo.write(90);  // || // FOR CLOSED BARRIER (DOWN)
   
   pinMode(StrobePin, OUTPUT); // Setting up Strobe Pin for Output
   pinMode(RedTrafficPin, OUTPUT);   // Setting up Stop Traffic Pin for Output
@@ -74,7 +59,6 @@ void loop() // This is our main loop
     LEDSTATE = !LEDSTATE;
     digitalWrite(StrobePin, LEDSTATE);
   }
-
   switch (Bridgestate) // IDLE and MOVING, two states of the Bridge system
   {
     case IDLE: // Trafffic Light is Red, Listening for Car. If car there, change state to moving.
@@ -107,7 +91,7 @@ void loop() // This is our main loop
   }
 }
 
-//DONE
+//DONE, Reads the distance measured by the ultrasonic and can output the number to serial.
 float masterdistanceread() // Outputs the distance of a master rangefinder as a function 
 {
   Masterdistance = MasterUltrasonic.read();
@@ -116,7 +100,7 @@ float masterdistanceread() // Outputs the distance of a master rangefinder as a 
   return(Masterdistance);
 }
 
-//DONE
+//DONE,  Reads the distance measured by the ultrasonic and can output the number to serial.
 float slavedistanceread() // Outputs the distance of slave rangefinder as a function 
 {
   Slavedistance = SlaveUltrasonic.read();
