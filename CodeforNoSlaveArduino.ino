@@ -54,8 +54,7 @@ void setup()
 
 void loop() 
 {
-  Bridgestate = IDLE;
-
+  Bridgestate = 0;
   Masterdistance = masterdistanceread();
   Slavedistance = slavedistanceread();
 
@@ -75,6 +74,7 @@ void loop()
     switch (Bridgestate)
     {
       case IDLE:
+        Bridgestate = IDLE;
         digitalWrite(RedTrafficPin, HIGH);   // Turns on Red Traffic Lights
         digitalWrite(GreenTrafficPin, LOW);  // Turns off Green Traffic Lights
         if (SerialBridgeTimer.TRIGGERED)
