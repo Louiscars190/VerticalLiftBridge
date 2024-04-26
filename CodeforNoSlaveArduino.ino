@@ -110,6 +110,10 @@ void loop()
 
           stepper2.newMoveDegrees (moveClockwise, 180); // move 180 degrees from current position
           move2StartTime = millis(); // reset move start time
+          if (SerialBridgeTimer.TRIGGERED)
+          {
+            
+          }
         }
         if (stepsLeft || steps2Left) 
         {
