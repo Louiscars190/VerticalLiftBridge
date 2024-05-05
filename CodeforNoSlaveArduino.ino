@@ -1,4 +1,3 @@
-#include <HC_SR04.h>
 #include <CheapStepper.h>
 #include <BlockNot.h>
 
@@ -8,30 +7,29 @@ int GreenTrafficPin = 6; // Outputs to 2 Green LEDS
 int RedTrafficPin = 5;   // Outputs to 2 Red LEDS
 bool LEDSTATE = false;
 
-/*Ultrasonic Sensor Setup*/
-HC_SR04_BASE *Slaves[] = { new HC_SR04<2>() }; 
-HC_SR04<3> sonicMaster(4, Slaves, 1); // Master operation binding sonic object to trigger and echo pins
-long Masterdistance, Slavedistance; // Number variables used to get measured distance
+/*Photoresistor*/
+int sensor1value = 0;
+int sensor2value = 0;
+int baseline = 0;
+int baseline1 = 0;
 
 /*Stepper Setup*/
-CheapStepper stepper (A0,A1,A2,A3);  
-CheapStepper stepper2 (10,11,12,13);
+CheapStepper stepper (4,5,6,7);  
+CheapStepper stepper2 (8,9,10,11);
 bool moveClockwise = true;
-unsigned long moveStartTime = 0; // this will save the time (millis()) when we started each new move
-unsigned long move2StartTime = 0;
 
 /*Switch-State Machine*/
-enum Bridgestate {IDLE, MOVING};
-     Bridgestate Bridgestate = 0;  // Makes an Enumeration containing IDLE and MOVING to be used in the state machine. // Starts the code with Bridgestate initially set to IDLE
+enum Bridgestate {UP, MOVING};
+     Bridgestate Bridgestate = UP;  // Makes an Enumeration containing IDLE and MOVING to be used in the state machine. // Starts the code with Bridgestate initially set to IDLE
 bool Bridgedown = true; // Might not need
 
 /*Non Blocking Timers*/
 BlockNot strobetimer(1000);
-BlockNot SerialSonicTimer(1500);
-BlockNot SerialSonic2Timer(1500);
+BlockNot SerialSensorTimer(1500);
 BlockNot SerialBridgeTimer(2000); // Updates Bridge Status every two seconds
 BlockNot bridgetimer(4000);
 BlockNot traffictimer(500);
+BlockNot sensortimer(5000);
 
 void setup() 
 {
@@ -40,10 +38,14 @@ void setup()
   stepper.setRpm(16);
   stepper2.setRpm(16);
   
-  stepper.newMoveToDegree(moveClockwise, 0); // For Calbration of Initial Bridge Position
-  stepper2.newMoveToDegree(moveClockwise, 0);
-  
-  sonicMaster.beginAsync(); // Starts measurement of both ultrasonic sensors
+  pinMode(A0, INPUT); // Setting up Photoresistor Sensor
+  pinMode(A1, INPUT); // Setting up Second Sensor (Slave Side)
+  baseline = analogRead(A0);
+  baseline1 = analogRead(A1);
+  Serial.print("Baseline 1 Calibration: ");
+  Serial.println(baseline);
+  Serial.print("Baseline 2 Calibration: ");
+  Serial.println(baseline1);
 
   pinMode(StrobePin, OUTPUT); // Setting up Strobe Pin for Output
   pinMode(RedTrafficPin, OUTPUT);   // Setting up Stop Traffic Pin for Output
@@ -54,113 +56,61 @@ void setup()
 
 void loop() 
 {
-  Bridgestate = 0;
-  Masterdistance = masterdistanceread();
-  Slavedistance = slavedistanceread();
+  stepper.run();
+  stepper2.run();
+  
+  int sensor1value = analogRead(A0);
+  int sensor2value = analogRead(A1);
 
-  sonicMaster.startAsync(200000);
-  while(!sonicMaster.isFinished()) 
+
+  unsigned int sensordelta = sensor1value - baseline;
+  unsigned int sensor1delta = sensor2value - baseline1;
+  switch (Bridgestate)
   {
-    stepper.run();
-    stepper2.run();
-    int stepsLeft = stepper.getStepsLeft();
-    int steps2Left = stepper2.getStepsLeft();
-
-    if(strobetimer.TRIGGERED) 
-    {
-      LEDSTATE = !LEDSTATE;
-      digitalWrite(StrobePin, LEDSTATE); // Blinks Strobes every second
-    }
-    switch (Bridgestate)
-    {
-      case IDLE:
-        Bridgestate = IDLE;
-        digitalWrite(RedTrafficPin, HIGH);   // Turns on Red Traffic Lights
-        digitalWrite(GreenTrafficPin, LOW);  // Turns off Green Traffic Lights
-        if (SerialBridgeTimer.TRIGGERED)
-        {
-         Serial.print("Bridge State: ");      
-         Serial.println(Bridgestate);
-        }
-        if (Masterdistance < 4 || Slavedistance < 4) 
-        {
-          Bridgestate = MOVING;
-        }
-        break;
-      case MOVING:
-        if (SerialBridgeTimer.TRIGGERED)
-        {
-          Serial.print("Bridge State: ");
-          Serial.println(Bridgestate);
-        }
-          flashinglights();
-        /*Moving Down*/
-          moveClockwise = !moveClockwise; // reverse direction
-          stepper.newMoveDegrees (moveClockwise, 180); // move 180 degrees from current position
-          moveStartTime = millis(); // reset move start time
-          
-          stepper2.newMoveDegrees (!moveClockwise, 180); // move 180 degrees from current position
-          move2StartTime = millis(); // reset move start time
-        bridgetimer.start(WITH_RESET);
-        if (bridgetimer.TRIGGERED)
-        {
-          moveClockwise = !moveClockwise; // reverse direction
-          stepper.newMoveDegrees (!moveClockwise, 180); // move 180 degrees from current position
-          moveStartTime = millis(); // reset move start time
-
-          stepper2.newMoveDegrees (moveClockwise, 180); // move 180 degrees from current position
-          move2StartTime = millis(); // reset move start time
-          if (SerialBridgeTimer.TRIGGERED)
-          {
-            
-          }
-        }
-        if (stepsLeft || steps2Left) 
-        {
+    case UP:
+      Bridgestate = UP;
+      digitalWrite(RedTrafficPin, HIGH);   // Turns on Red Traffic Lights
+      digitalWrite(GreenTrafficPin, LOW);  // Turns off Green Traffic Lights
+      if (SerialBridgeTimer.TRIGGERED)
+      {
+        Serial.print("Bridge State: "); 
+        Serial.println(Bridgestate);
+        Serial.print("Sensor Delta 1: ");
+        Serial.println(sensordelta);
+        Serial.print("Sensor Delta 2: ");
+        Serial.println(sensor1delta);
+      }
+      if (sensordelta > 30 || sensor1delta > 30) 
+      {
         Bridgestate = MOVING;
-        } 
-        else 
-        {
-        Bridgestate = IDLE;
-        }
-        break;
-    }
-  }
-}
+      }
+    break;
+    case MOVING:
+      if (SerialBridgeTimer.TRIGGERED)
+      {
+        Serial.print("Bridge State: ");
+        Serial.println(Bridgestate);
+      }
+      /*Moving Down*/
+        moveClockwise = !moveClockwise; // reverse direction
+        stepper.moveDegrees (moveClockwise, 360); // move 180 degrees from current position
+        stepper2.newMoveDegrees (!moveClockwise, 360); // move 180 degrees from current position
 
+        digitalWrite(GreenTrafficPin, HIGH);
+        digitalWrite(RedTrafficPin, LOW);
 
-// Reads the distance measured by the ultrasonic and can output the number to serial.
-float masterdistanceread() // Outputs the distance of a master rangefinder as a function 
-{
-  Masterdistance = sonicMaster.getDist_cm(0);
-  if(SerialSonicTimer.TRIGGERED)
-  {
-    Serial.print("Distance of Master: "); // Outputs Distance in centimeters to the Serial Monitor
-    Serial.print(Masterdistance );
-  }
-  return(Masterdistance);
-}
+        delay(1000);
 
-// Reads the distance measured by the ultrasonic and can output the number to serial.
-float slavedistanceread() // Outputs the distance of slave rangefinder as a function 
-{
-  Slavedistance = sonicMaster.getDist_cm(1);
-  if (SerialSonic2Timer.TRIGGERED)
-  {
-    Serial.print("Distance of Slave: ");
-    Serial.println(Slavedistance);
-  }
-  return(Slavedistance);
-}
+        moveClockwise = !moveClockwise; // reverse direction
+        stepper.newMoveDegrees (!moveClockwise, 360); // move 180 degrees from current position
 
-void flashinglights()
-{
-  if (traffictimer.TRIGGERED)
-  {
-    digitalWrite(RedTrafficPin, !digitalRead(RedTrafficPin));
-    digitalWrite(GreenTrafficPin, !digitalRead(GreenTrafficPin));
+        stepper2.newMoveDegrees (moveClockwise, 360); // move 180 degrees from current position
+
+        delay (1000);
+    
+        Bridgestate = UP;
+    break;
   }
-  return; 
 }
 
 /*--------------END-----------*/
